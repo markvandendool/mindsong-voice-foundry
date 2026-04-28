@@ -7,8 +7,10 @@ from pathlib import Path
 class F5TTSEngine:
     """Wraps the f5-tts_infer-cli command for async generation."""
 
-    def __init__(self):
+    def __init__(self, device: str = "mps"):
         self.model = "F5TTS_v1_Base"
+        self.device = device
+        self._fallback_to_cpu = False
 
     async def synthesize(
         self,
@@ -34,6 +36,7 @@ class F5TTSEngine:
             "--output_dir", str(out_path.parent),
             "--output_file", out_path.name,
             "--speed", str(speed),
+            "--device", self.device if not self._fallback_to_cpu else "cpu",
         ]
         if remove_silence:
             cmd.append("--remove_silence")
@@ -46,7 +49,12 @@ class F5TTSEngine:
         stdout, stderr = await proc.communicate()
 
         if proc.returncode != 0:
-            raise RuntimeError(f"F5-TTS failed: {stderr.decode()}")
+            err = stderr.decode()
+            # Auto-fallback to CPU on MPS-specific failure
+            if self.device == "mps" and not self._fallback_to_cpu and ("mps" in err.lower() or "metal" in err.lower()):
+                self._fallback_to_cpu = True
+                return await self.synthesize(text, ref_audio, output_path, speed, remove_silence)
+            raise RuntimeError(f"F5-TTS failed: {err}")
 
         # Fallback: if the CLI didn't honor --output_file, rename the default
         default_out = out_path.parent / "infer_cli_basic.wav"

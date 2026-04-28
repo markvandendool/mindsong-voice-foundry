@@ -19,6 +19,7 @@ async def health():
         "status": "healthy",
         "gpuAvailable": gpu_available,
         "gpuName": gpu_name,
+        "gpuDevice": "mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"),
         "modelsLoaded": {},
         "cacheSize": 0,
     }

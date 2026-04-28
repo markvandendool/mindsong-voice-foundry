@@ -33,7 +33,7 @@ app.include_router(synthesize.router, prefix="/voice", tags=["Synthesize"])
 app.include_router(master.router, prefix="/voice", tags=["Master"])
 app.include_router(presets.router, prefix="/voice", tags=["Presets"])
 app.include_router(qc.router, prefix="/voice", tags=["QC"])
-app.include_router(health.router, tags=["Health"])
+app.include_router(health.router, prefix="/voice", tags=["Health"])
 
 
 @app.get("/")
