@@ -1,4 +1,4 @@
-"""Voice synthesis endpoint with async job queue."""
+"""Voice synthesis endpoint with async job queue — multi-engine."""
 
 import asyncio
 import uuid
@@ -9,23 +9,29 @@ from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
 from src.engine.f5tts_engine import F5TTSEngine
+from src.engine.chatterbox_engine import ChatterboxEngine
+from src.engine.voxcpm2_engine import VoxCPM2Engine
 from src.post.mix_chain import master_take
 from src.presets.preset_defaults import PRESETS
 
 router = APIRouter()
 
-# Lazy-init engine
-_f5_engine = None
+# Lazy-init engines
+_engines: dict[str, object] = {}
 
 # In-memory job store (replace with Redis for multi-worker)
 _jobs: dict[str, dict] = {}
 
 
-def get_f5_engine():
-    global _f5_engine
-    if _f5_engine is None:
-        _f5_engine = F5TTSEngine()
-    return _f5_engine
+def _get_engine(provider: str):
+    if provider not in _engines:
+        if provider == "f5tts":
+            _engines[provider] = F5TTSEngine()
+        elif provider == "chatterbox":
+            _engines[provider] = ChatterboxEngine()
+        elif provider == "voxcpm2":
+            _engines[provider] = VoxCPM2Engine()
+    return _engines.get(provider)
 
 
 class SynthesizeRequest(BaseModel):
@@ -40,7 +46,7 @@ class SynthesizeRequest(BaseModel):
 
 class JobStatusResponse(BaseModel):
     jobId: str
-    status: str  # queued | running | completed | failed
+    status: str
     audioUrl: str | None = None
     rawUrl: str | None = None
     provider: str | None = None
@@ -65,21 +71,38 @@ def _run_synthesis_job(job_id: str, text: str, preset_key: str, mix_preset: str)
         raw_path = base_dir / f"{job_id}.raw.wav"
         mastered_path = base_dir / f"{job_id}.mastered.wav"
 
+        engine = _get_engine(provider)
+        if engine is None:
+            raise NotImplementedError(f"Provider {provider} not yet implemented in Foundry.")
+
         if provider == "f5tts":
-            engine = get_f5_engine()
-            ref_audio = preset["reference"]
-            # f5tts_engine.synthesize is async; run it in a fresh event loop inside the thread
             asyncio.run(
                 engine.synthesize(
                     text=text,
-                    ref_audio=ref_audio,
+                    ref_audio=preset["reference"],
                     output_path=str(raw_path),
                     speed=preset.get("speed", 1.0),
                     remove_silence=True,
                 )
             )
-        else:
-            raise NotImplementedError(f"Provider {provider} not yet implemented in Foundry.")
+        elif provider == "chatterbox":
+            asyncio.run(
+                engine.synthesize(
+                    text=text,
+                    ref_audio=preset["reference"],
+                    output_path=str(raw_path),
+                    preset=preset.get("emotion", "neutral"),
+                )
+            )
+        elif provider == "voxcpm2":
+            asyncio.run(
+                engine.synthesize(
+                    text=text,
+                    ref_audio=preset.get("reference"),
+                    output_path=str(raw_path),
+                    voice_design=preset.get("voiceDesign"),
+                )
+            )
 
         metrics = master_take(str(raw_path), str(mastered_path), mix_preset)
 

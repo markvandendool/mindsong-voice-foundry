@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routes import synthesize, master, presets, qc, health
+from .routes import synthesize, master, presets, qc, health, bakeoff
 
 APP_DIR = Path(__file__).resolve().parent.parent.parent
 ARTIFACTS_DIR = APP_DIR / "artifacts"
@@ -34,6 +34,7 @@ app.include_router(master.router, prefix="/voice", tags=["Master"])
 app.include_router(presets.router, prefix="/voice", tags=["Presets"])
 app.include_router(qc.router, prefix="/voice", tags=["QC"])
 app.include_router(health.router, prefix="/voice", tags=["Health"])
+app.include_router(bakeoff.router, prefix="/voice", tags=["Bakeoff"])
 
 
 @app.get("/")

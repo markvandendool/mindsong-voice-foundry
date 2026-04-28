@@ -28,6 +28,19 @@ PRESETS = {
         "emotion": "cinematic",
         "description": "Slower, deeper, high-dynamic-range cinematic narration.",
     },
+    "mark_chatterbox_storytelling": {
+        "provider": "chatterbox",
+        "reference": "voices/mark/processed/references/mark_narration_30s_24k_mono.wav",
+        "mixPreset": "skybeam_youtube",
+        "emotion": "storytelling",
+        "description": "Chatterbox storytelling preset for long-form narration.",
+    },
+    "mark_voxcpm2_clone": {
+        "provider": "voxcpm2",
+        "reference": "voices/mark/processed/references/mark_narration_30s_24k_mono.wav",
+        "mixPreset": "film_dialogue",
+        "description": "VoxCPM2 voice clone with reference audio.",
+    },
     "webspeech_fallback": {
         "provider": "webspeech",
         "mixPreset": "none",
