@@ -62,6 +62,8 @@ async def synthesize(req: SynthesizeRequest):
             text=req.text,
             ref_audio=ref_audio,
             output_path=str(raw_path),
+            speed=preset.get("speed", 1.0),
+            remove_silence=True,
         )
     else:
         raise NotImplementedError(f"Provider {provider} not yet implemented in Foundry.")
